@@ -5,6 +5,7 @@ import com.KoffeeClan.AssignMent.services.blogService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,55 +15,63 @@ import java.util.List;
 @RestController
 public class homeControllers {
 
-    @Autowired
-    public blogService serv;
-
+    private final blogService serv;
+    public homeControllers(blogService serv){
+        this.serv = serv;
+    }
     @RequestMapping("/")
     public ResponseEntity<String> getHome(){
             return ResponseEntity.ok("checking at : "+LocalDateTime.now());
     }
-
    @PostMapping("/addBlogs")
-    public String addBlog(@RequestParam String title,@RequestParam String content,@RequestParam String auth){
+    public ResponseEntity<blogModel> addBlog(@RequestParam String title,@RequestParam String content,@RequestParam String auth){
+       System.out.println("add blogs called ");
         blogModel newBlog = new blogModel();
         newBlog.setAuthor(auth);
         newBlog.setTitle(title);
         newBlog.setContent(content);
-        serv.addBlog(newBlog);
-        return newBlog.getContent()+" "+newBlog.getTitle()+" "+newBlog.getId()+""+newBlog.getCreatedAt()+newBlog.getAuthor();
-   }
-
-    @GetMapping("/getAll")
-    public List<blogModel> getBlogs() {
-        List<blogModel> blogs = serv.getBlogs();
-        if(blogs.isEmpty()){
-            return null;
-        }
-        else{
-            return blogs;
-        }
+        blogModel savedBlog = serv.addBlog(newBlog);
+       System.out.println(savedBlog.getAuthor()+" "+savedBlog.getContent()+" "+savedBlog.getTitle()+" "+savedBlog.getCreatedAt());
+        return ResponseEntity.ok(savedBlog);
     }
 
     @GetMapping("/getBlogs")
-    public Page<blogModel> getAllBlogs(@RequestParam(defaultValue = "0") int page,
+    public ResponseEntity<List<blogModel>> getBlogs() {
+        List<blogModel> blogs = serv.getBlogs();
+        if(blogs.isEmpty()){
+            return ResponseEntity.noContent().build();
+        }
+        else {
+            return ResponseEntity.ok(blogs);
+        }
+    }
+    @GetMapping("/blogs")
+    public ResponseEntity<Page<blogModel>> getAllBlogs(@RequestParam(defaultValue = "0") int page,
                                        @RequestParam(defaultValue = "5") int size)  {
-        return serv.findAll(page,size);
+        Page<blogModel> pagedBlogs= serv.findAll(page,size);
+        if (pagedBlogs.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        } else {
+            return ResponseEntity.ok(pagedBlogs);
+        }
     }
 
-   @GetMapping("/getBlogs/{id}")
-    public blogModel getBlogsById(@PathVariable int id){
+   @GetMapping("/blogs/{id}")
+    public ResponseEntity<blogModel> getBlogsById(@PathVariable int id){
         Long x = Long.valueOf(id);
-        return serv.findBlogById(x);
+        blogModel find = serv.findBlogById(x);
+        return ResponseEntity.ok(find);
    }
 
-   @DeleteMapping("/{id}")
-    public String deleteBlog(@PathVariable int id){
+   @DeleteMapping("/blogs/{id}")
+    public ResponseEntity<String> deleteBlog(@PathVariable int id){
         Long x = Long.valueOf(id);
         String result = serv.deleteBlog(x);
-        return result;
+        return ResponseEntity.ok(result);
    }
-   @PutMapping("/{id}")
-    public blogModel updateBlog(@PathVariable long id,@RequestParam String title,@RequestParam String content,@RequestParam String auth){
+
+   @PutMapping("/blogs/{id}")
+    public ResponseEntity<blogModel> updateBlog(@PathVariable long id,@RequestParam String title,@RequestParam String content,@RequestParam String auth){
         blogModel blog = serv.findBlogById(id);
         if(blog!=null){
             blog.setTitle(title);
@@ -70,9 +79,9 @@ public class homeControllers {
             blog.setContent(content);
             blog.setCreatedAt(LocalDateTime.now());
             serv.updateBlog(blog);
-            return blog;
+            return ResponseEntity.ok(blog);
         }
-            return blog;
+            return ResponseEntity.notFound().build();
    }
 
 
